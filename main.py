@@ -15,7 +15,7 @@ from panda3d.core import CollisionHandlerQueue, CollisionRay
 from panda3d.core import Filename, AmbientLight, DirectionalLight
 from panda3d.core import PandaNode, NodePath, Camera, TextNode
 from panda3d.core import CollideMask
-from panda3d.core import TextureStage, LVector4f
+from panda3d.core import Texture, TextureStage, LVector4f
 from direct.gui.OnscreenText import OnscreenText
 from direct.actor.Actor import Actor
 import random
@@ -42,11 +42,11 @@ class RoamingRalphDemo(ShowBase):
         ShowBase.__init__(self)
 
         # Set the background color to black
-        self.win.setClearColor((0, 0, 0, 1))
+        self.win.setClearColor((0.8, 0.8, 0.8, 1))
 
         # This is used to store which keys are currently pressed.
         self.keyMap = {
-            "left": 0, "right": 0, "forward": 0, "cam-left": 0, "cam-right": 0}
+            "left": 0, "right": 0, "forward": 0, "backward": 0, "cam-left": 0, "cam-right": 0}
 
         # Post the instructions
         self.title = addTitle(
@@ -58,16 +58,31 @@ class RoamingRalphDemo(ShowBase):
         self.inst6 = addInstructions(0.30, "[A]: Rotate Camera Left")
         self.inst7 = addInstructions(0.36, "[S]: Rotate Camera Right")
 
-        self.environ = loader.loadModel("models/Ground2")
+        # fix floor
+        self.floor = loader.loadModel("models/Ground2")
+        self.floor.setZ(-17)
+        myTexture = loader.loadTexture("bamboo.jpg")
+        myTexture.setWrapU(Texture.WM_repeat)
+        myTexture.setWrapV(Texture.WM_repeat)
+        self.floor.setTexture(myTexture, 1)
+        self.floor.setTexScale(TextureStage.getDefault(), 30, 30)
+        self.floor.reparentTo(render)
+
+        #self.environ = loader.loadModel("models/Corridor1")
+        self.environ = loader.loadModel("models/EndRoom")
+        self.environ.setScale(3.0, 6.0, 1.0)
+        self.environ.setZ(10.5)
         self.environ.reparentTo(render)
 
-        myTexture = loader.loadTexture("black.jpeg")
+        myTexture = loader.loadTexture("white.jpg")
         self.environ.setTexture(myTexture, 1)
 
-        self.sky = loader.loadModel("models/stars")
-        self.sky.reparentTo(render)
+        #self.sky = loader.loadModel("models/stars")
+        #self.sky.reparentTo(render)
 
         self.tv = loader.loadModel("models/TV")
+        self.tv.setScale(2)
+        self.tv.setZ(-5)
         self.tv.reparentTo(render)
         myMovieTexture=loader.loadTexture("Untitled.avi")
         
@@ -96,11 +111,13 @@ class RoamingRalphDemo(ShowBase):
         self.accept("arrow_left", self.setKey, ["left", True])
         self.accept("arrow_right", self.setKey, ["right", True])
         self.accept("arrow_up", self.setKey, ["forward", True])
+        self.accept("arrow_down", self.setKey, ["backward", True])
         self.accept("a", self.setKey, ["cam-left", True])
         self.accept("s", self.setKey, ["cam-right", True])
         self.accept("arrow_left-up", self.setKey, ["left", False])
         self.accept("arrow_right-up", self.setKey, ["right", False])
         self.accept("arrow_up-up", self.setKey, ["forward", False])
+        self.accept("arrow_down-up", self.setKey, ["backward", False])
         self.accept("a-up", self.setKey, ["cam-left", False])
         self.accept("s-up", self.setKey, ["cam-right", False])
 
@@ -115,13 +132,19 @@ class RoamingRalphDemo(ShowBase):
 
         # Create some lighting
         ambientLight = AmbientLight("ambientLight")
-        ambientLight.setColor((.3, .3, .3, 1))
+        ambientLight.setColor((.4, .4, .4, 0.2))
         directionalLight = DirectionalLight("directionalLight")
         directionalLight.setDirection((-5, -5, -5))
-        directionalLight.setColor((1, 1, 1, 1))
+        directionalLight.setColor((1, 1, 1, 0.3))
         directionalLight.setSpecularColor((1, 1, 1, 1))
+
+        directionalLight2 = DirectionalLight("directionalLight")
+        directionalLight2.setDirection((5, 5, 5))
+        directionalLight2.setColor((1, 1, 1, 0.3))
+        directionalLight2.setSpecularColor((1, 1, 1, 1))
         render.setLight(render.attachNewNode(ambientLight))
         render.setLight(render.attachNewNode(directionalLight))
+        render.setLight(render.attachNewNode(directionalLight2))
 
     # Records the state of the arrow keys
     def setKey(self, key, value):
@@ -151,12 +174,17 @@ class RoamingRalphDemo(ShowBase):
 
         # If a move-key is pressed, move ralph in the specified direction.
 
+        # add rotate left right up down
         if self.keyMap["left"]:
-            self.ralph.setH(self.ralph.getH() + 200 * dt)
+            self.ralph.setX(self.ralph, 200 * dt)
+            #self.ralph.setH(self.ralph.getH() + 200 * dt)
         if self.keyMap["right"]:
-            self.ralph.setH(self.ralph.getH() - 200 * dt)
+            self.ralph.setX(self.ralph, -200 * dt)
+            #self.ralph.setH(self.ralph.getH() - 200 * dt)
         if self.keyMap["forward"]:
-            self.ralph.setY(self.ralph, -25 * dt)
+            self.ralph.setY(self.ralph, -200 * dt)
+        if self.keyMap["backward"]:
+            self.ralph.setY(self.ralph, 200 * dt)
 
         # If ralph is moving, loop the run animation.
         # If he is standing still, stop the animation.
@@ -183,11 +211,11 @@ class RoamingRalphDemo(ShowBase):
         #todo: pick a good camera angle
         self.floater = NodePath(PandaNode("floater"))
         self.floater.reparentTo(self.ralph)
-        self.floater.setZ(13)
+        self.floater.setZ(2)
 
-        self.camera.setPos(0, 60, 10)
+        self.camera.setPos(0, -3, 3)
         self.camera.setH(180)
-        self.camera.lookAt(self.floater)
+        #self.camera.lookAt(self.ralph)
 
         return task.cont
 
